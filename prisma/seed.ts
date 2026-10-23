@@ -14,6 +14,17 @@ const products = [
     size: '8 oz',
     featured: true,
   },
+  {
+    id: 'shamp-flower-conditioner',
+    name: 'Shamp Flower Conditioner',
+    slug: 'flower-conditioner',
+    description: 'A lightweight floral conditioner that leaves hair feeling soft, smooth, and easy to comb. Infused with rose and chamomile extracts for a fresh, delicate scent.',
+    price: 2500,
+    image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=800',
+    category: 'Conditioner',
+    size: '12 oz',
+    featured: true,
+  },
 ]
 
 async function main() {
