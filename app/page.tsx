@@ -20,6 +20,17 @@ const product = {
   image: 'https://images.unsplash.com/photo-1631729371254-42c2892f0e6e?w=800',
 }
 
+const conditioner = {
+  id: 'shamp-flower-conditioner',
+  name: 'Shamp Flower Conditioner',
+  slug: 'flower-conditioner',
+  description: 'A lightweight floral conditioner that leaves hair feeling soft, smooth, and easy to comb. Infused with rose and chamomile extracts for a fresh, delicate scent.',
+  price: 2500,
+  subscriptionPrice: 2000,
+  image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=800',
+  size: '12 oz',
+}
+
 type TabType = 'description' | 'how-to-use' | 'ingredients'
 
 export default function HomePage() {
@@ -39,6 +50,21 @@ export default function HomePage() {
     })
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
+  }
+
+  const [conditionerPurchaseType, setConditionerPurchaseType] = useState<'subscribe' | 'onetime'>('subscribe')
+  const [conditionerAdded, setConditionerAdded] = useState(false)
+
+  const handleAddConditionerToCart = () => {
+    addItem({
+      id: conditioner.id,
+      name: conditioner.name,
+      slug: conditioner.slug,
+      price: conditionerPurchaseType === 'subscribe' ? conditioner.subscriptionPrice : conditioner.price,
+      image: conditioner.image,
+    })
+    setConditionerAdded(true)
+    setTimeout(() => setConditionerAdded(false), 2000)
   }
 
   return (
@@ -255,6 +281,91 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* Flower Conditioner Section */}
+        <section className="mt-20 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="relative aspect-square rounded-lg overflow-hidden bg-navy-800">
+            <Image
+              src={conditioner.image}
+              alt={conditioner.name}
+              fill
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className="object-cover"
+            />
+          </div>
+
+          <div>
+            <h2 className="font-serif text-4xl md:text-5xl text-navy-900 mb-2">
+              Flower<br />Conditioner
+            </h2>
+            <p className="text-navy-600 text-lg mb-4">{conditioner.size}</p>
+            <p className="text-navy-700 mb-6">{conditioner.description}</p>
+
+            {/* Purchase Options */}
+            <div className="space-y-3 mb-6">
+              {/* Subscribe Option */}
+              <label
+                className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  conditionerPurchaseType === 'subscribe'
+                    ? 'border-navy-900 bg-navy-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="conditionerPurchaseType"
+                    checked={conditionerPurchaseType === 'subscribe'}
+                    onChange={() => setConditionerPurchaseType('subscribe')}
+                  />
+                  <div className="flex-1 flex justify-between items-center">
+                    <span className="font-semibold text-navy-900">Subscribe</span>
+                    <div className="text-right">
+                      <span className="line-through text-gray-400 mr-2">${(conditioner.price / 100).toFixed(0)}</span>
+                      <span className="font-bold text-navy-900">
+                        ${(conditioner.subscriptionPrice / 100).toFixed(0)}/month
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </label>
+
+              {/* One-time Option */}
+              <label
+                className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  conditionerPurchaseType === 'onetime'
+                    ? 'border-navy-900 bg-navy-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="conditionerPurchaseType"
+                    checked={conditionerPurchaseType === 'onetime'}
+                    onChange={() => setConditionerPurchaseType('onetime')}
+                  />
+                  <div className="flex-1 flex justify-between items-center">
+                    <span className="font-semibold text-navy-900">One-time purchase</span>
+                    <span className="font-bold text-navy-900">${(conditioner.price / 100).toFixed(0)}</span>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            {/* Add to Cart Button */}
+            <button
+              onClick={handleAddConditionerToCart}
+              className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${
+                conditionerAdded
+                  ? 'bg-green-600 text-white'
+                  : 'bg-coral-500 hover:bg-coral-600 text-white'
+              }`}
+            >
+              {conditionerAdded ? 'Added to Cart!' : 'Add to Cart'}
+            </button>
+          </div>
+        </section>
 
         {/* Benefits Section */}
         <section className="mt-20 py-16 bg-navy-900 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 rounded-lg">
