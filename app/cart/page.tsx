@@ -3,6 +3,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useCart } from '@/components/CartProvider'
+import {
+  getFreeShippingMessage,
+  getFreeShippingProgress,
+  getShippingCost,
+} from '@/lib/shipping'
 
 export default function CartPage() {
   const { items, totalPrice, updateQuantity, removeItem } = useCart()
@@ -26,8 +31,9 @@ export default function CartPage() {
     )
   }
 
-  const shippingCost = totalPrice >= 3900 ? 0 : 500
+  const shippingCost = getShippingCost(totalPrice)
   const total = totalPrice + shippingCost
+  const progressPct = Math.floor(getFreeShippingProgress(totalPrice) * 100)
 
   return (
     <div className="bg-cream min-h-screen">
@@ -85,6 +91,23 @@ export default function CartPage() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg p-6 sticky top-4">
               <h2 className="text-xl font-semibold text-navy-900 mb-4">Order Summary</h2>
+              <div className="mb-4 space-y-2">
+                <p className="text-sm text-navy-700" aria-live="polite">{getFreeShippingMessage(totalPrice)}</p>
+                <div
+                  role="progressbar"
+                  aria-label="Progress toward free shipping"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progressPct}
+                  aria-valuetext={getFreeShippingMessage(totalPrice)}
+                  className="h-2 bg-navy-100 rounded-full overflow-hidden"
+                >
+                  <div
+                    className="h-full bg-coral-500 transition-all motion-reduce:transition-none"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
               <div className="space-y-3 text-navy-700">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
@@ -94,11 +117,6 @@ export default function CartPage() {
                   <span>Shipping</span>
                   <span>{shippingCost === 0 ? 'Free' : `$${(shippingCost / 100).toFixed(2)}`}</span>
                 </div>
-                {shippingCost > 0 && (
-                  <p className="text-sm text-navy-500">
-                    Free shipping on orders over $39
-                  </p>
-                )}
                 <div className="border-t border-gray-200 pt-3 flex justify-between font-semibold text-navy-900">
                   <span>Total</span>
                   <span>${(total / 100).toFixed(2)}</span>

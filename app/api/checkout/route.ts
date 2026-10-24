@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
+import { getShippingCost } from '@/lib/shipping'
 
 interface CartItem {
   id: string
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
 
     // Calculate totals
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const shippingCost = subtotal >= 5000 ? 0 : 500
+    const shippingCost = getShippingCost(subtotal)
     const total = subtotal + shippingCost
 
     // Create line items for Stripe
