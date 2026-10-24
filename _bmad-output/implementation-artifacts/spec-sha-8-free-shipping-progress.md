@@ -2,13 +2,41 @@
 title: 'SHA-8: Free-shipping progress bar and consistent shipping policy'
 type: 'feature'
 created: '2026-10-24'
-status: 'ready-for-dev'
-baseline_revision: 'fb2e3d6383d185db5f0e6a3d70b20d8e08bfb8fd'
+status: 'done'
+baseline_revision: 'd20d1d7499beffad94446da97a2c362ce45b9936'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      POST /api/checkout prices the Stripe line items, the shipping decision, and the Order total from client-posted item prices.
+    evidence: |-
+      route.ts computes subtotal and unit_amount from item.price in the request body. A tampered cart can lower prices or inflate them to unlock free shipping. This predates SHA-8, and the intent forbids changing how the route trusts or re-prices items.
+    location: >-
+      app/api/checkout/route.ts:41
+    severity: high
+  - summary: >-
+      The home page ("Free shipping on every order") and the header promo ("FREE SHIPPING") contradict the $50 free-shipping policy.
+    evidence: |-
+      app/page.tsx and components/Header.tsx still promise unconditional free shipping. Stripe already charged $5 under $50 before this change. The intent puts the home page and the header promo out of scope.
+    location: >-
+      app/page.tsx, components/Header.tsx
+    severity: medium
+  - summary: >-
+      AGENTS.md still says there are no tests and does not list npm test as a verification step.
+    evidence: |-
+      AGENTS.md "Running and verifying" lists only lint and build, so agents following it never run the new threshold tests. Fixes to agent-context files are deferred by policy.
+    location: >-
+      AGENTS.md:17
+    severity: medium
+  - summary: >-
+      No automated check confirms that cart, checkout, and the Stripe route all use getShippingCost.
+    evidence: |-
+      Only lib/shipping.ts is unit-tested. Agreement across the three surfaces holds by construction, because each calls getShippingCost. If any caller reintroduced an inline rule, every test would still pass. Closing this needs the route's line-item logic extracted into a pure lib function, or a route/component test harness, which the spec does not allow adding.
+    location: >-
+      app/cart/page.tsx, app/checkout/page.tsx, app/api/checkout/route.ts
+    severity: medium
 ---
 
 <intent-contract>
@@ -82,6 +110,30 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-24 — Review pass
+- verdicts: 20 findings — high 2, medium 5, low 7, false 5, maybe-false 1
+- findings:
+  - `[low]` `[patch]` (blind) Cart progress used `Math.round`, so subtotals 4975–4999 showed a full bar and aria-valuenow 100 while the message still said "Add $X more". — Switched `progressPct` to `Math.floor`. The bar now reaches 100 only at the threshold. Current prices are multiples of 100, so this could not happen yet.
+  - `[low]` `[patch]` (blind) Screen readers did not hear the message change on +/-/Remove. — Added `aria-live="polite"` to the message and `aria-valuetext` to the progressbar.
+  - `[false]` `[reject]` (blind) Unlocking looks the same as partial progress. — The message text changes to "You’ve unlocked free shipping!", the bar fills, and the Shipping row shows "Free". The unlock is visibly confirmed.
+  - `[medium]` `[defer]` (blind) The home page and header copy promise free shipping on every order, which contradicts the $50 policy. — Real and pre-existing. The intent's Never list excludes the home page and header promo.
+  - `[high]` `[defer]` (blind) Free shipping and Order totals come from client-sent prices. — Real and pre-existing. Stripe unit_amount also uses item.price. The intent forbids changing how the route trusts or re-prices items.
+  - `[false]` `[reject]` (blind) Negative or non-integer subtotals are handled inconsistently. — Not reachable: `updateQuantity` removes items below 1, and prices are integer cents, so `totalPrice` is always a non-negative integer.
+  - `[false]` `[reject]` (blind) `qualifiesForFreeShipping` has no direct test, and $11.50 is untested. — The predicate is exercised at 4950/5000/7800 through `getShippingCost`. The two-decimal path is covered by the 4950 → `$0.50` row.
+  - `[false]` `[reject]` (blind) The unlocked message is duplicated in the test. — Pinning the exact copy, including U+2019, independently is the point of the test. Importing it would make the assertion tautological.
+  - `[low]` `[defer]` (blind) The test script runs one file, and AGENTS.md does not mention `npm test`. — No other test file exists today, so the glob part has no current defect. The AGENTS.md part is an agent-context edit and is deferred, grouped with the verification-gap AGENTS.md finding.
+  - `[low]` `[patch]` (blind) The fill transition ignores reduced motion. — Added `motion-reduce:transition-none` to the fill.
+  - `[low]` `[patch]` (edge) progressPct rounds to 100 for 4975–4999. — Same root cause as the first row. Fixed with `Math.floor`.
+  - `[maybe-false]` `[reject]` (edge) Corrupt localStorage could make totalPrice NaN. — Only reachable by hand-editing localStorage, and it would already break the existing Subtotal display. Settling it would need a test that injects malformed cart JSON. Even if true it is only low, so rejected.
+  - `[high]` `[defer]` (edge) Tampered or non-numeric client prices drive shipping and the Order total. — Same root cause as the client-price row. Pre-existing, and excluded by the intent.
+  - `[medium]` `[defer]` (verification-gap) AGENTS.md verify step omits `npm test`, so the threshold tests never run in the documented path. — Agent-context file edits are deferred by policy.
+  - `[medium]` `[defer]` (verification-gap) No check proves cart, checkout, and Stripe share the rule. — Pre-verified by that layer. Closing it needs extracting the route logic or adding a harness, which the spec forbids. Deferred.
+  - `[low]` `[patch]` (verification-gap, other) The progress bar can look full before unlock. — Same root cause as the first row. Fixed with `Math.floor`.
+  - `[medium]` `[defer]` (intent-alignment) Cross-surface agreement holds by construction, not by test. — Same root cause as the verification-gap regression gap. Deferred.
+  - `[low]` `[patch]` (intent-alignment) Rounding can show 100% before unlock (the "full iff unlocked" reading). — Same root cause as the first row. Fixed with `Math.floor`.
+  - `[false]` `[reject]` (intent-alignment) The test file contains 3900/5000/500 literals. — The test asserts the policy values and fixtures. None is a shipping rule in another file. The grep of app/ and components/ finds no shipping literal or comparison.
+  - `[medium]` `[defer]` (intent-alignment) Header and home copy still disagree with the $50 rule. — Same root cause as the home page and header row. Excluded by the intent's Never list.
+
 ## Design Notes
 
 The story only says "approved shipping policy," and no PRD or other doc defines it. Its own example pins the $50 threshold, and `POST /api/checkout` already charges by that rule. So the server is treated as correct, and the client's `3900` is the bug. The $5 flat rate is unchanged, because every surface already uses it. Pure functions keep the threshold tests independent of React and Stripe. The cart ACs are checked in the browser against the real page.
@@ -109,5 +161,47 @@ Suggested shape for the cart progress block (inside the summary card, above the 
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none. Halted after planning as the invocation directed; implementation and review were not run.
+Status: done
+Blocking condition: none.
+
+**Summary:** The shipping policy now lives in one place, `lib/shipping.ts`: free at a subtotal of 5000 cents or more, otherwise 500 cents. `/cart`, `/checkout`, and `POST /api/checkout` all use it. This fixes the old split where the client gave free shipping at $39 but the server only at $50. The cart summary now shows a live free-shipping message and a progress bar.
+
+**Files changed:**
+- `lib/shipping.ts` — new. Holds the constants, `qualifiesForFreeShipping`, `getShippingCost`, `getFreeShippingRemaining`, `getFreeShippingProgress`, and `getFreeShippingMessage`. It has no imports.
+- `lib/shipping.test.ts` — new. `node:test` cases for every matrix row, grouped as below, exactly at, and above the threshold.
+- `package.json` — adds the `"test": "tsx --test lib/shipping.test.ts"` script.
+- `app/api/checkout/route.ts` — the inline rule is replaced by `getShippingCost(subtotal)`. The line-item shape is unchanged.
+- `app/checkout/page.tsx` — the wrong `>= 3900` rule is replaced by `getShippingCost(totalPrice)`.
+- `app/cart/page.tsx` — uses `getShippingCost`. The static "$39" note is replaced by the progress block, with an aria-live message and a progressbar using floor percentage, aria-valuetext, and reduced-motion support.
+
+**Review findings:** 20 findings: high 2, medium 5, low 7, false 5, maybe-false 1.
+- Patched: 3 entries, all low.
+  - Progress rounding: switched to `Math.floor`.
+  - Screen-reader announcement: added `aria-live` and `aria-valuetext`.
+  - Reduced motion: added `motion-reduce:transition-none`.
+- Deferred: 4 items. See the `deferred` frontmatter.
+  - Client-price trust in the route (high, pre-existing).
+  - Home page and header free-shipping copy (medium, out of scope per intent).
+  - AGENTS.md verify step omits `npm test` (medium, agent-context file).
+  - No cross-surface automated test (medium).
+- Rejected:
+  - Unlock styling: false, because the message, the full bar, and "Free" confirm it.
+  - Negative or non-integer subtotals: false, not reachable.
+  - Missing direct predicate test or $11.50 case: false, already covered.
+  - Duplicated unlocked copy in the test: false, intentional pinning.
+  - Test literals: false, they are not shipping rules.
+  - Corrupt localStorage NaN: maybe-false, and low even if true.
+
+**Follow-up review recommended:** false. Patched entries were 0 high, 0 medium, and 3 low.
+
+**Verification:**
+- `npm test` passes 7 of 7, covering all six matrix rows plus the constants.
+- `npm run lint` reports no warnings or errors.
+- `npm run build` compiles successfully with no env vars.
+- `grep -rnE "(3900|5000) \? 0" app components` finds no matches.
+- The matrix test audit passed.
+
+**Residual risks:**
+- Manual browser checks were not run: the cart +/-/Remove walkthrough, the two-conditioner checkout, and the Stripe line items. There was no seeded DB or Stripe test keys.
+- `Math.floor` on float progress can read 1% low for some subtotals (for example 2900 → 57%). This is cosmetic, and the bar never fills early.
+- Carts from $39.00 to $49.99 now show $5.00 shipping on cart and checkout. This matches what Stripe already charged.

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/components/CartProvider'
+import { getShippingCost } from '@/lib/shipping'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -86,7 +87,7 @@ export default function CheckoutPage() {
     }
   }
 
-  const shippingCost = totalPrice >= 3900 ? 0 : 500
+  const shippingCost = getShippingCost(totalPrice)
   const total = totalPrice + shippingCost
 
   return (
